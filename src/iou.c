@@ -23,25 +23,91 @@
 
 /* iou is a minimal IO-oriented async callback scheduler built atop io_uring */
 
+typedef struct _iou_op_t _iou_op_t;
+typedef struct iou_ops_t iou_ops_t;
+
 typedef struct iou_t {
 	struct io_uring	ring;
 	unsigned	n_issued, n_queued, n_submitted;
 	unsigned	quit:1;
+	iou_ops_t	*ops;
 } iou_t;
 
 /* private container of the public iou_op_t */
-typedef struct _iou_op_t {
+struct _iou_op_t {
 	iou_op_t	public;
 
 	int		(*cb)(void *cb_data);
 	void		*cb_data;
-} _iou_op_t;
+	_iou_op_t	*free_next;
+	iou_ops_t	*container;
+};
 
+/* ops bulk allocation container */
+struct iou_ops_t {
+	iou_ops_t	*next;
+	_iou_op_t	*free;
+	size_t		count;
+	_iou_op_t	ops[];
+};
 
 #ifndef CONTAINER_OF
 #define CONTAINER_OF(ptr, type, member) \
 (type *)((char *)(ptr) - offsetof(type, member))
 #endif
+
+
+static _iou_op_t * ops_get(iou_ops_t **ops)
+{
+	size_t		next_count = 4;
+	iou_ops_t	*t = NULL;
+	_iou_op_t	*_op;
+
+	assert(ops);
+
+	/* look through the available ops list for a free one */
+	if (*ops) {
+		next_count = (*ops)->count * 2;
+
+		for (t = *ops; t && !t->free; t = t->next);
+
+		if (t && !t->free)
+			t = NULL;
+	}
+
+	/* no currently free one, add more ops */
+	if (!t) {
+		t = calloc(1, sizeof(iou_ops_t) + sizeof(_iou_op_t) * next_count);
+		if (!t)
+			return NULL;
+
+		t->count = next_count;
+		for (int i = 0; i < next_count; i++) {
+			t->ops[i].container = t;
+			t->ops[i].free_next = t->free;
+			t->free = &t->ops[i];
+		}
+
+		t->next = *ops;
+		*ops = t;
+	}
+
+	_op = t->free;
+	t->free = _op->free_next;
+	_op->free_next = NULL;
+
+	return _op;
+}
+
+
+static void ops_put(_iou_op_t *_op)
+{
+	assert(_op);
+	assert(_op->container);
+
+	_op->free_next = _op->container->free;
+	_op->container->free = _op;
+}
 
 
 iou_t * iou_new(unsigned entries)
@@ -66,6 +132,13 @@ iou_t * iou_new(unsigned entries)
 iou_t * iou_free(iou_t *iou)
 {
 	if (iou) {
+		iou_ops_t	*t;
+
+		while ((t = iou->ops)) {
+			iou->ops = t->next;
+			free(t);
+		}
+
 		io_uring_queue_exit(&iou->ring);
 		free(iou);
 	}
@@ -86,13 +159,13 @@ iou_op_t * iou_op_new(iou_t *iou)
 
 	assert(iou);
 
-	_op = calloc(1, sizeof(*_op));
+	_op = ops_get(&iou->ops);
 	if (!_op)
 		return NULL;
 
 	_op->public.sqe = io_uring_get_sqe(&iou->ring);
 	if (!_op->public.sqe) {
-		free(_op);
+		ops_put(_op);
 		return NULL;
 	}
 
@@ -204,7 +277,7 @@ int iou_run(iou_t *iou)
 		if (r < 0)
 			return r;
 
-		free(_op);
+		ops_put(_op);
 	}
 
 	return 0;
