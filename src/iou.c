@@ -82,23 +82,23 @@ iou_t * iou_free(iou_t *iou)
  */
 iou_op_t * iou_op_new(iou_t *iou)
 {
-	_iou_op_t	*new;
+	_iou_op_t	*_op;
 
 	assert(iou);
 
-	new = calloc(1, sizeof(*new));
-	if (!new)
+	_op = calloc(1, sizeof(*_op));
+	if (!_op)
 		return NULL;
 
-	new->public.sqe = io_uring_get_sqe(&iou->ring);
-	if (!new->public.sqe) {
-		free(new);
+	_op->public.sqe = io_uring_get_sqe(&iou->ring);
+	if (!_op->public.sqe) {
+		free(_op);
 		return NULL;
 	}
 
 	iou->n_issued++;
 
-	return &new->public;
+	return &_op->public;
 }
 
 
