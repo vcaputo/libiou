@@ -35,5 +35,6 @@ int iou_flush(iou_t *iou);
 int iou_run(iou_t *iou);
 int iou_quit(iou_t *iou);
 int iou_resize(iou_t *iou, unsigned entries);
+struct io_uring * iou_ring(iou_t *iou);
 
 #endif

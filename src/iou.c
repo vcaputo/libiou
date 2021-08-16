@@ -243,3 +243,14 @@ int iou_resize(iou_t *iou, unsigned entries)
 
 	return io_uring_queue_init(entries, &iou->ring, 0);
 }
+
+
+/* Accessor for getting at the underlying io_uring struct for calling
+ * liburing helpers directly against, use with care.
+ */
+struct io_uring * iou_ring(iou_t *iou)
+{
+	assert(iou);
+
+	return &iou->ring;
+}
