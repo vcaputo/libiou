@@ -36,5 +36,6 @@ int iou_run(iou_t *iou);
 int iou_quit(iou_t *iou);
 int iou_resize(iou_t *iou, unsigned entries);
 struct io_uring * iou_ring(iou_t *iou);
+int iou_async(iou_t *iou, int (*async_cb)(void *async_cb_data), void *async_cb_data, int (*completion_cb)(void *completion_cb_data), void *completion_cb_data);
 
 #endif
