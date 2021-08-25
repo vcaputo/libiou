@@ -349,7 +349,7 @@ int iou_run(iou_t *iou)
 			return r;
 
 		/* complete any processed async work */
-		while (iou->n_async) {
+		if (iou->n_async) {
 
 			pthread_mutex_lock(&iou->processed_mutex);
 			_op = iou->processed;
