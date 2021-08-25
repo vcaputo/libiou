@@ -24,6 +24,8 @@
 
 /* iou is a minimal IO-oriented async callback scheduler built atop io_uring */
 
+#define CQE_BATCH_SIZE	16
+
 typedef struct _iou_op_t _iou_op_t;
 typedef struct iou_ops_t iou_ops_t;
 
@@ -339,9 +341,8 @@ int iou_run(iou_t *iou)
 	assert(iou);
 
 	while (!iou->quit && (iou->n_queued + iou->n_submitted + iou->n_async)) {
-		struct io_uring_cqe	*cqe;
-		_iou_op_t		*_op;
-		int			r;
+		_iou_op_t	*_op;
+		int		r;
 
 		/* flush any queued iou_ops to get those IO balls rolling. */
 		r = iou_flush(iou);
@@ -373,22 +374,36 @@ int iou_run(iou_t *iou)
 		if (!iou->n_submitted)
 			continue;
 
-		/* wait for and process an IO completion */
-		r = io_uring_wait_cqe(&iou->ring, &cqe);
-		if (r < 0)
-			return r;
+		{
+			struct io_uring_cqe	*cqes[CQE_BATCH_SIZE];
+			unsigned		n;
 
-		_op = io_uring_cqe_get_data(cqe);
-		_op->public.result = cqe->res;
+			/* optimistically try get a batch first */
+			n = io_uring_peek_batch_cqe(&iou->ring, cqes, CQE_BATCH_SIZE);
+			if (!n) {
+				/* Bummer, wait for at least one. */
+				r = io_uring_wait_cqe(&iou->ring, cqes);
+				if (r < 0)
+					return r;
+				n = 1;
+			}
 
-		io_uring_cqe_seen(&iou->ring, cqe);
-		iou->n_submitted--;
+			for (unsigned i = 0; i < n; i++) {
+				struct io_uring_cqe	*cqe = cqes[i];
 
-		r = _op->cb(_op->cb_data);
-		if (r < 0)
-			return r;
+				_op = io_uring_cqe_get_data(cqe);
+				_op->public.result = cqe->res;
 
-		ops_put(_op);
+				io_uring_cqe_seen(&iou->ring, cqe);
+				iou->n_submitted--;
+
+				r = _op->cb(_op->cb_data);
+				if (r < 0)
+					return r;
+
+				ops_put(_op);
+			}
+		}
 	}
 
 	return 0;
