@@ -19,6 +19,7 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <stddef.h>
+#include <sys/prctl.h>
 
 #include "iou.h"
 
@@ -148,6 +149,7 @@ static void * iou_thread(iou_thread_t *thread)
 	assert(thread);
 	assert(thread->iou);
 
+	prctl(PR_SET_NAME, "libiou-async");
 	iou = thread->iou;
 
 	for (;;) {
