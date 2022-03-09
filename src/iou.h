@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2020 - Vito Caputo - <vcaputo@pengaru.com>
+ *  Copyright (C) 2020-2022 - Vito Caputo - <vcaputo@pengaru.com>
  *
  *  This program is free software: you can redistribute it and/or modify it
  *  under the terms of the GNU General Public License version 3 as published
