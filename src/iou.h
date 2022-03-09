@@ -34,7 +34,7 @@ void iou_op_queue(iou_t *iou, iou_op_t *op, int (*cb)(void *cb_data), void *cb_d
 int iou_flush(iou_t *iou);
 int iou_run(iou_t *iou);
 int iou_quit(iou_t *iou);
-int iou_resize(iou_t *iou, unsigned entries);
+int iou_resize(iou_t *iou, unsigned n_entries);
 struct io_uring * iou_ring(iou_t *iou);
 int iou_async(iou_t *iou, int (*async_cb)(void *async_cb_data), void *async_cb_data, int (*completion_cb)(void *completion_cb_data), void *completion_cb_data);
 

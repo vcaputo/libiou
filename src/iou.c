@@ -423,7 +423,7 @@ int iou_quit(iou_t *iou)
 }
 
 
-/* Resize the underlying io_uring to entries.
+/* Resize the underlying io_uring to n_entries.
  *
  * This can only be done when there's nothing queued or submitted, since
  * it's essentially tearing down and recreating everything including the
@@ -434,15 +434,15 @@ int iou_quit(iou_t *iou)
  * bootstrap you learn necessary depths to accomodate subsequent operations
  * and need to resize accordingly.
  */
-int iou_resize(iou_t *iou, unsigned entries)
+int iou_resize(iou_t *iou, unsigned n_entries)
 {
 	assert(iou);
-	assert(entries);
+	assert(n_entries);
 	assert(!(iou->n_issued + iou->n_queued + iou->n_submitted));
 
 	io_uring_queue_exit(&iou->ring);
 
-	return io_uring_queue_init(entries, &iou->ring, 0);
+	return io_uring_queue_init(n_entries, &iou->ring, 0);
 }
 
 
