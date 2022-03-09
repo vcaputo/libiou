@@ -239,9 +239,9 @@ iou_t * iou_free(iou_t *iou)
 
 /* allocates an op, which wraps an io_uring sqe, result, and associated closure */
 /* when an op completes, its result member is populated from the cqe, and its
- * closure supplied when queued is called.   If the closure must access the cqe,
- * it should bind the op by the submission time, then it may access the
- * op->cqe member.
+ * callback supplied when queued is called with its accompanying
+ * cb_data pointer.  Callback access to the raw cqe isn't currently
+ * facilitated.
  */
 iou_op_t * iou_op_new(iou_t *iou)
 {
